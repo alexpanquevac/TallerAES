@@ -42,8 +42,18 @@ W1 = [CLAVE[4], CLAVE[5], CLAVE[6], CLAVE[7]]
 W2 = [CLAVE[8], CLAVE[9], CLAVE[10], CLAVE[11]]
 W3 = [CLAVE[12], CLAVE[13], CLAVE[14], CLAVE[15]]
 
+def transpose_matrix(matrix):
+    num_filas = len(matrix)
+    num_columnas = len(matrix[0]) if matrix else 0
+    transpuesta = [[0 for _ in range(num_filas)] for _ in range(num_columnas)]
+    for i in range(num_filas):
+        for j in range(num_columnas):
+            transpuesta[j][i] = matrix[i][j]
+
+    return transpuesta
 
 sk0 = [W0,W1,W2,W3]
+  
 
 RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
 
@@ -51,6 +61,7 @@ def sub_byte(byte):
     return S_BOX[byte]
 
 SUBCLAVES = []
+SUBCLAVES.append(transpose_matrix(sk0))
 
 for i in range(10):
     fila = []
@@ -89,22 +100,26 @@ def obtenerSubclave(wS,rcon):
         SKi.append(WsActual)
     return SKi    
 
-
-for i in range(10):
+#Genera la subclaves para las 10 mrondas
+for i in range(9):
     ski = obtenerSubclave(sk0,R_CON[i])
     sk0 = []
     sk0 = ski
-    SUBCLAVES.append(ski)
+    SUBCLAVES.append(transpose_matrix(ski))
+    
 
-
+print("subClaves")
+indice = 0
 for i in SUBCLAVES:
+    print("Sk",indice)
+    indice+=1
     matriz = []
     for elemento in i:
         fila = []
         for j in elemento:
             fila.append(hex(j))
-        matriz.append(fila)
-    print(matriz)            
+        print(fila)
+               
 
 
 MixColumnsMatrix = [
@@ -114,6 +129,8 @@ MixColumnsMatrix = [
     [0x03, 0x01, 0x01, 0x02],
 ]
 
+
+
 matrizEjemplo = [
     [0xEA, 0x04, 0x65, 0x85],
     [0x83, 0x45, 0x5D, 0x96],
@@ -121,86 +138,106 @@ matrizEjemplo = [
     [0xF0, 0x2D, 0xAD, 0xC5]
 ]
 
+mensajeEjemplo = [
+    [0xA1, 0x48, 0x6F, 0x6C],
+    [0x61, 0x20, 0x4D, 0x75],
+    [0x6E, 0x64, 0x6F, 0x21],
+    [0x04, 0x04, 0x04, 0x04]
+]
 
-def g(word, iteration):
-    word = word[1:] + word[:1]
-    word = [sub_byte(byte) for byte in word]
-    word[0] ^= RCON[iteration]
-    return word
-
-def key_expansion(key):
-    key_symbols = [ord(symbol) for symbol in key]
-    expanded_key = key_symbols
-
-    for i in range(4, 44):
-        word = expanded_key[-4:]
-        if i % 4 == 0:
-            word = [a^b for a, b in zip(g(word, i // 4), expanded_key[-16:-12])]
-        else:
-            word = [a^b for a, b in zip(word, expanded_key[-16:-12])]
-        expanded_key += word
-
-    return expanded_key
-
-
+#metodo de addroundkey
 def AddRoundKey(Matriz, Subclave):
-  resultado = [4]*4
-  for i in range(16):
-    valor = hex(int(Matriz[i]) ^ int(Subclave[i]))
-    resultado.append(valor)
+  resultado = []
+  for i in range(4):
+      fila = []
+      for j in range(4):
+          fila.append(Matriz[i][j]^Subclave[i][j])  
+      resultado.append(fila)    
   return resultado
 
+#metodo de subbytes
+def subByteRound(matriz):
+    resultado = []
+    for elemento in matriz:
+        fila = []
+        for i in elemento:
+            fila.append(sub_byte(i))
+        resultado.append(fila)  
+    return resultado 
+
+#metodo de  shiftRow
 def shiftRow(matriz):
-    for i in range(4):
-        matriz[i] = matriz[i][i:] + matriz[i][:i]    
+    matriz[1] = matriz[1][1:] + matriz[1][:1]
+    matriz[2] = matriz[2][2:] + matriz[2][:2]
+    matriz[3] = matriz[3][3:] + matriz[3][:3]
 
-def mix_columns(matrizFinal):
-    for i in range(4):
-        s0 = int(matrizFinal[0][i],16)
-        s1 = int(matrizFinal[1][i],16)
-        s2 = int(matrizFinal[2][i],16)
-        s3 = int(matrizFinal[3][i],16)
+    return matriz
 
-        matrizFinal[0][i] = galois_mult(0x02, s0) ^ galois_mult(0x03, s1) ^ s2 ^ s3
-        matrizFinal[1][i] = s0 ^ galois_mult(0x02, s1) ^ galois_mult(0x03, s2) ^ s3
-        matrizFinal[2][i] = s0 ^ s1 ^ galois_mult(0x02, s2) ^ galois_mult(0x03, s3)
-        matrizFinal[3][i] = galois_mult(0x03, s0) ^ s1 ^ s2 ^ galois_mult(0x02, s3)
+#Metodo de mixcolum
+def galois_mul(a, b):
+        p = 0
+        for _ in range(8):
+            if b & 1:
+                p ^= a
+            high_bit_set = a & 0x80
+            a <<= 1
+            if high_bit_set:
+                a ^= 0x11B
+            b >>= 1
+        return p
 
-def galois_mult(a, b):
-    p = 0
-    for _ in range(8):
-        if b & 1:
-            p ^= a
-        hi_bit_set = a & 0x80
-        a <<= 1
-        if hi_bit_set:
-            a ^= 0x1b  
-        b >>= 1
-    return p       
+#Metodo de mixcolums
+def mixColumns(mix_matrix, state):
+    for col in range(4):
+        s0, s1, s2, s3 = state[0][col], state[1][col], state[2][col], state[3][col]
+        state[0][col] = galois_mul(mix_matrix[0][0], s0) ^ galois_mul(mix_matrix[0][1], s1) ^ galois_mul(mix_matrix[0][2], s2) ^ galois_mul(mix_matrix[0][3], s3)
+        state[1][col] = galois_mul(mix_matrix[1][0], s0) ^ galois_mul(mix_matrix[1][1], s1) ^ galois_mul(mix_matrix[1][2], s2) ^ galois_mul(mix_matrix[1][3], s3)
+        state[2][col] = galois_mul(mix_matrix[2][0], s0) ^ galois_mul(mix_matrix[2][1], s1) ^ galois_mul(mix_matrix[2][2], s2) ^ galois_mul(mix_matrix[2][3], s3)
+        state[3][col] = galois_mul(mix_matrix[3][0], s0) ^ galois_mul(mix_matrix[3][1], s1) ^ galois_mul(mix_matrix[3][2], s2) ^ galois_mul(mix_matrix[3][3], s3)
 
-matrizFinal  = []
+    return state
 
-for row in matrizEjemplo:
+
+resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[0])
+print("roundKey 1") 
+for elemento in resultado:
     fila = []
-    for elemento in row:
-        dato = hex(sub_byte(elemento))
-        fila.append(dato)
-    matrizFinal.append(fila)
+    for i in elemento:
+        fila.append(hex(i))
+    print(fila)
 
-'''
-for i in matrizFinal:
-    print(i)  
+print("subbytes") 
+subbytematriz = []
+subbytematriz = subByteRound(resultado)
+for elemento in subbytematriz:
+    fila = []
+    for i in elemento:
+        fila.append(hex(i))
+    print(fila)    
 
-print("Se realiza shiftRow")
-shiftRow(matrizFinal)
-for i in matrizFinal:
-    print(i)
+print("Shift Row") 
+shimatriz = []
+shimatriz = shiftRow(subbytematriz)
+for elemento in shimatriz:
+    fila = []
+    for i in elemento:
+        fila.append(hex(i))
+    print(fila)   
 
-print("Se realiza mixColumns")
-mix_columns(matrizFinal)
-for i in matrizFinal:
-    for elemento in i:
-        print(hex(elemento))            
+print("mixColumns")
+mixMatriz = []
+mixMatriz = mixColumns(MixColumnsMatrix,shimatriz)
+for elemento in mixMatriz:
+    fila = []
+    for i in elemento:
+        fila.append(hex(i))
+    print(fila)   
 
-'''
+print(bin((0x02 * 0x1e)^(0x03 * 0xc9)^(0x01 * 0x33)^(0x01 * 0xd7)))
+print(bin((0x02 * 0x1e)))
+print(bin((0x03 * 0xc9)))
+print(bin((0x01 * 0x33)))
+print(bin((0x01 * 0xd7)))
+print(bin(0x98))
+  
 
