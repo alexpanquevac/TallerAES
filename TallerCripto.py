@@ -26,21 +26,22 @@ CLAVE = [0x48, 0x6F, 0x6E,0x61,0x31,0x32,0x33,0x09,0x09,0x09,0x09,0x09,0x09,0x09
 
 R_CON = [
     [0x01, 0x00, 0x00, 0x00],
-    [0x00, 0x01, 0x00, 0x00],
-    [0x04, 0x00, 0x00, 0x00],
-    [0x08, 0x00, 0x00, 0x00],
     [0x10, 0x00, 0x00, 0x00],
-    [0x20, 0x00, 0x00, 0x00],
-    [0x40, 0x00, 0x00, 0x00],
-    [0x80, 0x00, 0x00, 0x00],
-    [0x1B, 0x00, 0x00, 0x00],
-    [0x36, 0x00, 0x00, 0x00],
+    [0x00, 0x01, 0x00, 0x00],
+    [0x08, 0x10, 0x00, 0x00],
+    [0x00, 0x00, 0x01, 0x00],
+    [0x00, 0x00, 0x10, 0x00],
+    [0x00, 0x00, 0x00, 0x01],
+    [0x00, 0x00, 0x00, 0x10],
+    [0x11, 0x10, 0x01, 0x00],
+    [0x10, 0x01, 0x11, 0x00],
 ]
 
 W0 = [CLAVE[0], CLAVE[1], CLAVE[2], CLAVE[3]]
 W1 = [CLAVE[4], CLAVE[5], CLAVE[6], CLAVE[7]]
 W2 = [CLAVE[8], CLAVE[9], CLAVE[10], CLAVE[11]]
 W3 = [CLAVE[12], CLAVE[13], CLAVE[14], CLAVE[15]]
+
 
 sk0 = [W0,W1,W2,W3]
 
@@ -63,11 +64,13 @@ def xorSk(w,w0):
         nuevoW.append((w[i] ^ w0[i]))
     return nuevoW    
 
+#Obtiene la subclave apartir de la matriz anterior y la constante Sub i
 def obtenerSubclave(wS,rcon):
     w = wS[3]
     fila = [w[0], w[1], w[2], w[3]]
     elemento_rotado = fila.pop()  # Elimina el último elemento
     fila.insert(0, elemento_rotado)
+    
     #Se pasa por caja S
     Wis = []
     for elemento in fila:
@@ -80,41 +83,14 @@ def obtenerSubclave(wS,rcon):
     WsActual = xorSk(wS[0],WsActual)
     SKi = []
     SKi.append(WsActual)
+    #Se realiza xor con las Ws anteriores
     for i in range(3):
         WsActual = xorSk(sk0[i+1], WsActual)
         SKi.append(WsActual)
     return SKi    
 
 
-
-
-'''
-elemento_rotado = W3.pop()  # Elimina el último elemento
-W3.insert(0, elemento_rotado)
-
-Ws = []
-for elemento in W3:
-    valor = sub_byte(elemento)
-    Ws.append(valor)
-
-print(Ws) 
-print(Ws[0]^Ws[0])    
-actual = []
-actual = xorSk(Ws,R_CON[0])
-print(actual)
-actual =  xorSk(W0,actual)
-SUBCLAVES.append(actual)
-
-for i in range(3):
-    actual = xorSk(sk0[i+1], actual)
-    SUBCLAVES.append(actual)
-
-
-for i in actual:
-    print(hex(i))
-    '''
-
-for i in range(3):
+for i in range(10):
     ski = obtenerSubclave(sk0,R_CON[i])
     sk0 = []
     sk0 = ski
