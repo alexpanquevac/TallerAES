@@ -197,47 +197,36 @@ def mixColumns(mix_matrix, state):
 
     return state
 
+def imprimir(matriz):
+    for elemento in matriz:
+        fila = []
+        for i in elemento:
+            fila.append(hex(i))
+        print(fila)  
 
-resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[0])
-print("roundKey 1") 
-for elemento in resultado:
-    fila = []
-    for i in elemento:
-        fila.append(hex(i))
-    print(fila)
+print("  ")
+print("  ")
+def encriptar(mensajeEjemplo):
+          for i in range(10):
+              print("  ")
+              print("Ronda",i)
+              print("RoundKey",i)
+              resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[i])
+              imprimir(resultado)
+              subbytematriz = []
+              subbytematriz = subByteRound(resultado)
+              print("Sub-Byte",i)
+              imprimir(subbytematriz)
+              shimatriz = []
+              shimatriz = shiftRow(subbytematriz)
+              print("Shift-Row",i)
+              imprimir(shimatriz)
+              mixMatriz = []
+              mixMatriz = mixColumns(MixColumnsMatrix,shimatriz)
+              print("Mix-Columns",i)
+              imprimir(mixMatriz)
 
-print("subbytes") 
-subbytematriz = []
-subbytematriz = subByteRound(resultado)
-for elemento in subbytematriz:
-    fila = []
-    for i in elemento:
-        fila.append(hex(i))
-    print(fila)    
+encriptar(mensajeEjemplo)              
 
-print("Shift Row") 
-shimatriz = []
-shimatriz = shiftRow(subbytematriz)
-for elemento in shimatriz:
-    fila = []
-    for i in elemento:
-        fila.append(hex(i))
-    print(fila)   
-
-print("mixColumns")
-mixMatriz = []
-mixMatriz = mixColumns(MixColumnsMatrix,shimatriz)
-for elemento in mixMatriz:
-    fila = []
-    for i in elemento:
-        fila.append(hex(i))
-    print(fila)   
-
-print(bin((0x02 * 0x1e)^(0x03 * 0xc9)^(0x01 * 0x33)^(0x01 * 0xd7)))
-print(bin((0x02 * 0x1e)))
-print(bin((0x03 * 0xc9)))
-print(bin((0x01 * 0x33)))
-print(bin((0x01 * 0xd7)))
-print(bin(0x98))
   
 
