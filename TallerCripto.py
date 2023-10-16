@@ -3,6 +3,9 @@ from operator import xor
 from tkinter import W
 
 
+#Polinomio irreductible para mi grupo
+#x8 + x6 + x5 + x3 + 1 
+
 S_BOX = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -37,10 +40,35 @@ R_CON = [
     [0x10, 0x01, 0x11, 0x00],
 ]
 
-W0 = [CLAVE[0], CLAVE[1], CLAVE[2], CLAVE[3]]
-W1 = [CLAVE[4], CLAVE[5], CLAVE[6], CLAVE[7]]
-W2 = [CLAVE[8], CLAVE[9], CLAVE[10], CLAVE[11]]
-W3 = [CLAVE[12], CLAVE[13], CLAVE[14], CLAVE[15]]
+MixColumnsMatrix = [
+    [0x02, 0x03, 0x01, 0x01],
+    [0x01, 0x02, 0x03, 0x01],
+    [0x01, 0x01, 0x02, 0x03],
+    [0x03, 0x01, 0x01, 0x02],
+]
+
+matrizEjemplo = [
+    [0xEA, 0x04, 0x65, 0x85],
+    [0x83, 0x45, 0x5D, 0x96],
+    [0x5C, 0x33, 0x98, 0xB0],
+    [0xF0, 0x2D, 0xAD, 0xC5]
+]
+
+mensajeEjemplo = [
+    [0xA1, 0x48, 0x6F, 0x6C],
+    [0x61, 0x20, 0x4D, 0x75],
+    [0x6E, 0x64, 0x6F, 0x21],
+    [0x04, 0x04, 0x04, 0x04]
+]
+
+matrizOtra = [
+    [0x87, 0xf2, 0x4d, 0x97],
+    [0x6e, 0x4c, 0x90, 0xec],
+    [0x46, 0xe7, 0x4a, 0xc3],
+    [0xa6, 0x8c, 0xd8, 0x95]
+]
+
+
 
 def transpose_matrix(matrix):
     num_filas = len(matrix)
@@ -51,8 +79,6 @@ def transpose_matrix(matrix):
             transpuesta[j][i] = matrix[i][j]
 
     return transpuesta
-
-sk0 = [W0,W1,W2,W3]
   
 
 RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
@@ -60,15 +86,17 @@ RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
 def sub_byte(byte):
     return S_BOX[byte]
 
-SUBCLAVES = []
-SUBCLAVES.append(transpose_matrix(sk0))
+def obtenerWsIniciales(CLAVE):
+    W0 = [CLAVE[0], CLAVE[1], CLAVE[2], CLAVE[3]]
+    W1 = [CLAVE[4], CLAVE[5], CLAVE[6], CLAVE[7]]
+    W2 = [CLAVE[8], CLAVE[9], CLAVE[10], CLAVE[11]]
+    W3 = [CLAVE[12], CLAVE[13], CLAVE[14], CLAVE[15]]
+    sk0 = [W0,W1,W2,W3]
+    return sk0
 
-for i in range(10):
-    fila = []
-    for elemento in range(4):
-        fila.append(elemento)
-    
 
+   
+#Metodo que realiza xor de dos matrices   
 def xorSk(w,w0):
     nuevoW = []
     for i in range(4):
@@ -101,49 +129,29 @@ def obtenerSubclave(wS,rcon):
     return SKi    
 
 #Genera la subclaves para las 10 mrondas
-for i in range(9):
-    ski = obtenerSubclave(sk0,R_CON[i])
-    sk0 = []
-    sk0 = ski
-    SUBCLAVES.append(transpose_matrix(ski))
+def generarSubclaves(SUBCLAVES, sk0):
+    for i in range(9):
+        ski = obtenerSubclave(sk0,R_CON[i])
+        sk0 = []
+        sk0 = ski
+        SUBCLAVES.append(transpose_matrix(ski))
+    return SUBCLAVES  
     
 
-print("subClaves")
-indice = 0
-for i in SUBCLAVES:
-    print("Sk",indice)
-    indice+=1
-    matriz = []
-    for elemento in i:
-        fila = []
-        for j in elemento:
-            fila.append(hex(j))
-        print(fila)
+#Mostramos las SubClaves en pantalla
+def mostrarSubClaves(SUBCLAVES) :
+    print("SUB-Claves")
+    indice = 0
+    for i in SUBCLAVES:
+        print("Sk-",indice)
+        indice+=1
+        matriz = []
+        for elemento in i:
+            fila = []
+            for j in elemento:
+                fila.append(hex(j))
+            print(fila)
                
-
-
-MixColumnsMatrix = [
-    [0x02, 0x03, 0x01, 0x01],
-    [0x01, 0x02, 0x03, 0x01],
-    [0x01, 0x01, 0x02, 0x03],
-    [0x03, 0x01, 0x01, 0x02],
-]
-
-
-
-matrizEjemplo = [
-    [0xEA, 0x04, 0x65, 0x85],
-    [0x83, 0x45, 0x5D, 0x96],
-    [0x5C, 0x33, 0x98, 0xB0],
-    [0xF0, 0x2D, 0xAD, 0xC5]
-]
-
-mensajeEjemplo = [
-    [0xA1, 0x48, 0x6F, 0x6C],
-    [0x61, 0x20, 0x4D, 0x75],
-    [0x6E, 0x64, 0x6F, 0x21],
-    [0x04, 0x04, 0x04, 0x04]
-]
 
 #metodo de addroundkey
 def AddRoundKey(Matriz, Subclave):
@@ -174,7 +182,7 @@ def shiftRow(matriz):
     return matriz
 
 #Metodo de mixcolum
-def galois_mul(a, b):
+def galois_mul(a, b, polinomio):
         p = 0
         for _ in range(8):
             if b & 1:
@@ -182,18 +190,18 @@ def galois_mul(a, b):
             high_bit_set = a & 0x80
             a <<= 1
             if high_bit_set:
-                a ^= 0x11B
+                a ^= polinomio
             b >>= 1
         return p
 
 #Metodo de mixcolums
-def mixColumns(mix_matrix, state):
+def mixColumns(mix_matrix, state, polinomio):
     for col in range(4):
         s0, s1, s2, s3 = state[0][col], state[1][col], state[2][col], state[3][col]
-        state[0][col] = galois_mul(mix_matrix[0][0], s0) ^ galois_mul(mix_matrix[0][1], s1) ^ galois_mul(mix_matrix[0][2], s2) ^ galois_mul(mix_matrix[0][3], s3)
-        state[1][col] = galois_mul(mix_matrix[1][0], s0) ^ galois_mul(mix_matrix[1][1], s1) ^ galois_mul(mix_matrix[1][2], s2) ^ galois_mul(mix_matrix[1][3], s3)
-        state[2][col] = galois_mul(mix_matrix[2][0], s0) ^ galois_mul(mix_matrix[2][1], s1) ^ galois_mul(mix_matrix[2][2], s2) ^ galois_mul(mix_matrix[2][3], s3)
-        state[3][col] = galois_mul(mix_matrix[3][0], s0) ^ galois_mul(mix_matrix[3][1], s1) ^ galois_mul(mix_matrix[3][2], s2) ^ galois_mul(mix_matrix[3][3], s3)
+        state[0][col] = galois_mul(mix_matrix[0][0], s0,polinomio) ^ galois_mul(mix_matrix[0][1], s1,polinomio) ^ galois_mul(mix_matrix[0][2], s2,polinomio) ^ galois_mul(mix_matrix[0][3], s3,polinomio)
+        state[1][col] = galois_mul(mix_matrix[1][0], s0,polinomio) ^ galois_mul(mix_matrix[1][1], s1,polinomio) ^ galois_mul(mix_matrix[1][2], s2,polinomio) ^ galois_mul(mix_matrix[1][3], s3,polinomio)
+        state[2][col] = galois_mul(mix_matrix[2][0], s0,polinomio) ^ galois_mul(mix_matrix[2][1], s1,polinomio) ^ galois_mul(mix_matrix[2][2], s2,polinomio) ^ galois_mul(mix_matrix[2][3], s3,polinomio)
+        state[3][col] = galois_mul(mix_matrix[3][0], s0,polinomio) ^ galois_mul(mix_matrix[3][1], s1,polinomio) ^ galois_mul(mix_matrix[3][2], s2,polinomio) ^ galois_mul(mix_matrix[3][3], s3,polinomio)
 
     return state
 
@@ -206,7 +214,8 @@ def imprimir(matriz):
 
 print("  ")
 print("  ")
-def encriptar(mensajeEjemplo):
+#Metodo que encripta un mensaje
+def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
           for i in range(10):
               print("  ")
               print("Ronda",i)
@@ -222,11 +231,25 @@ def encriptar(mensajeEjemplo):
               print("Shift-Row",i)
               imprimir(shimatriz)
               mixMatriz = []
-              mixMatriz = mixColumns(MixColumnsMatrix,shimatriz)
+              mixMatriz = mixColumns(MixColumnsMatrix,shimatriz,polinomio)
               print("Mix-Columns",i)
               imprimir(mixMatriz)
 
-encriptar(mensajeEjemplo)              
+
+sk0 = obtenerWsIniciales(CLAVE)
+SUBCLAVES = []
+SUBCLAVES.append(transpose_matrix(sk0))
+
+SUBCLAVES = generarSubclaves(SUBCLAVES, sk0)
+mostrarSubClaves(SUBCLAVES)
+encriptar(mensajeEjemplo,0x11B,SUBCLAVES) 
+
+print(" ")
+print(" ")
+print("Encripción utilizando nuestro polinomio")
+encriptar(mensajeEjemplo,0x1B3, SUBCLAVES)      
+
+
 
   
 
