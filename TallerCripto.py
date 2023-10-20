@@ -130,7 +130,7 @@ def obtenerSubclave(wS,rcon):
 
 #Genera la subclaves para las 10 mrondas
 def generarSubclaves(SUBCLAVES, sk0):
-    for i in range(9):
+    for i in range(10):
         ski = obtenerSubclave(sk0,R_CON[i])
         sk0 = []
         sk0 = ski
@@ -216,24 +216,40 @@ print("  ")
 print("  ")
 #Metodo que encripta un mensaje
 def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
-          for i in range(10):
+    #ronda 0
+    resultado = []
+    print("  ")
+    print("Ronda 0")
+    resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[0])
+    imprimir(resultado)
+
+    for i in range(8):
+              indice = i + 1
               print("  ")
-              print("Ronda",i)
-              print("RoundKey",i)
-              resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[i])
+              print("Ronda",indice)
+              resultado = subByteRound(resultado)
+              print("Sub-Byte",indice)
               imprimir(resultado)
-              subbytematriz = []
-              subbytematriz = subByteRound(resultado)
-              print("Sub-Byte",i)
-              imprimir(subbytematriz)
-              shimatriz = []
-              shimatriz = shiftRow(subbytematriz)
-              print("Shift-Row",i)
-              imprimir(shimatriz)
-              mixMatriz = []
-              mixMatriz = mixColumns(MixColumnsMatrix,shimatriz,polinomio)
-              print("Mix-Columns",i)
-              imprimir(mixMatriz)
+              resultado = shiftRow(resultado)
+              print("Shift-Row",indice)
+              imprimir(resultado)
+              resultado = mixColumns(MixColumnsMatrix,resultado,polinomio)
+              print("Mix-Columns",indice)
+              imprimir(resultado)
+
+              print("RoundKey",indice)
+              resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[i+1])
+              imprimir(resultado)
+    print("Ronda 10")              
+    resultado = subByteRound(resultado)
+    print("Sub-Byte 10")
+    imprimir(resultado)
+    resultado = shiftRow(resultado)
+    print("Shift-Row 10")
+    imprimir(resultado)
+    print("RoundKey 10")
+    resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[10])
+    imprimir(resultado)          
 
 
 sk0 = obtenerWsIniciales(CLAVE)
@@ -247,7 +263,7 @@ encriptar(mensajeEjemplo,0x11B,SUBCLAVES)
 print(" ")
 print(" ")
 print("Encripción utilizando nuestro polinomio")
-encriptar(mensajeEjemplo,0x1B3, SUBCLAVES)      
+encriptar(mensajeEjemplo,0x1B3, SUBCLAVES)
 
 
 
