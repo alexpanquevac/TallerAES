@@ -392,6 +392,34 @@ def desencriptar(mensajeEjemplo, polinomio, SUBCLAVES,BOX):
     imprimir(resultado)
 
 
+def texto_a_matriz(texto):
+    # Convierte el mensaje en una cadena hexadecimal sin el prefijo '0x'
+    mensaje_hex = ''.join(['{:02x}'.format(ord(caracter)) for caracter in texto])
+    
+    # Calcula la cantidad de relleno necesario para que sea una matriz 4x4
+    cantidad_relleno = 16 - (len(mensaje_hex) % 16)
+    
+    # Agrega los ceros de relleno
+    mensaje_hex += '00' * (cantidad_relleno // 2)
+    
+    # Divide la cadena hexadecimal en una matriz 4x4
+    matriz = [mensaje_hex[i:i+8] for i in range(0, len(mensaje_hex), 8)]
+    
+    # Formatea cada elemento de la matriz como '0xXX'
+    matriz = [['0x' + matriz[i][0:2], '0x' + matriz[i][2:4], '0x' + matriz[i][4:6], '0x' + matriz[i][6:8]] for i in range(4)]
+    
+    return matriz
+
+# Solicita un mensaje al usuario
+mensaje = input("El mensaje: ")
+
+# Convierte el mensaje en una matriz 4x4
+matriz_resultante = texto_a_matriz(mensaje)
+
+# Imprime la matriz resultante
+for fila in matriz_resultante:
+    print(fila)
+
 
 sk0 = obtenerWsIniciales(CLAVE)
 SUBCLAVES = []
@@ -401,7 +429,9 @@ SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX)
 mostrarSubClaves(SUBCLAVES)
 encriptar(mensajeEjemplo,0x11B,SUBCLAVES,S_BOX) 
 
-print(" ")
+
+
+""" print(" ")
 print(" ")
 print("Encripción utilizando nuestro polinomio")
 encriptar(mensajeEjemplo,0x1B3, SUBCLAVES,S_BOX)
@@ -441,4 +471,4 @@ SUBCLAVES = []
 SUBCLAVES.append(transpose_matrix(sk0))
 
 SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX_INVERSE)
-mostrarSubClaves(SUBCLAVES)
+mostrarSubClaves(SUBCLAVES) """
