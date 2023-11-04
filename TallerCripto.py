@@ -6,7 +6,63 @@ from tkinter import W
 #Polinomio irreductible para mi grupo
 #x8 + x6 + x5 + x3 + 1 
 
-S_BOX = [
+def galois_multiplication(a, b):
+    p = 0
+    hi_bit_set = 0
+    for i in range(8):
+        if b & 1 == 1:
+            p ^= a
+        hi_bit_set = a & 0x80
+        a <<= 1
+        if hi_bit_set == 0x80:
+            a ^= 0x11b
+        b >>= 1
+    return p % 256
+
+def galois_inverse(num):
+    if num == 0:
+        return 0
+    for ext in range(256):
+        if galois_multiplication(num, ext) == 1:
+            return ext
+    return 0
+
+def sbox_transformation(byte):
+    c = 0x63
+    s_box_byte = byte
+    for _ in range(4):
+        s_box_byte = ((s_box_byte << 1) & 0xFF) | (s_box_byte >> 7)
+        byte ^= s_box_byte
+    return (byte ^ c) & 0xFF
+
+def generate_sbox():
+    sbox = []
+    for byte in range(256):
+        inverted = galois_inverse(byte)
+        sbox.append(sbox_transformation(inverted))
+    return sbox
+
+S_BOX = generate_sbox()
+for i in range(16):
+    for j in range(16):
+        print(hex(S_BOX[i*16 + j]), end=" ")
+    print()
+
+print("\n")
+
+def generate_inverse_sbox(sbox):
+    inverse_sbox = [0] * 256
+    for i, value in enumerate(sbox):
+        inverse_sbox[value] = i
+    return inverse_sbox
+
+S_BOX_INVERSE = generate_inverse_sbox(S_BOX)
+for i in range(16):
+    for j in range(16):
+        print(hex(S_BOX_INVERSE[i*16 + j]), end=" ")
+    print()
+
+S_BOX_AUX = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
     0xB7, 0xFD, 0x93, 0x26, 0x36, 0x3F, 0xF7, 0xCC, 0x34, 0xA5, 0xE5, 0xF1, 0x71, 0xD8, 0x31, 0x15,
@@ -104,7 +160,7 @@ mensajes = [
 arregloClaves = [
     [0x48, 0x6F, 0x6C, 0x6C, 0x6F, 0x20, 0x57, 0x6F, 0x72, 0x6C, 0x64, 0x20, 0x54, 0x68, 0x65, 0x72],  # "Hello World There"
     [0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50],  # "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    [0x21, 0x24, 0x25, 0x26, 0x2A, 0x40, 0x5E, 0x7C, 0x7E, 0x3F, 0x21, 0x24, 0x25, 0x26, 0x2A, 0x40],  # "!$%&*@^|~?!$%&*@"
+    [0x21, 0x24, 0x25, 0x26, 0x2A, 0x40, 0x5E, 0x7C, 0x7E, 0x3F, 0x21, 0x24, 0x25, 0x26, 0x2A, 0x40],  # "!$%&@^|~?!$%&@"
     [0x57, 0x68, 0x61, 0x74, 0x27, 0x73, 0x20, 0x66, 0x6F, 0x75, 0x72, 0x20, 0x34, 0x78, 0x34, 0x20],  # "What's four 4x4 "
     [0x4D, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x20, 0x35, 0x20, 0x4D, 0x65, 0x6E, 0x75, 0x20, 0x54]   # "Message 5 Menu T"
 ]
@@ -124,8 +180,9 @@ def transpose_matrix(matrix):
 
 RCON = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
 
-def sub_byte(byte):
-    return S_BOX[byte]
+def sub_byte(byte, BOX):
+    return BOX[byte]
+
 
 def obtenerWsIniciales(CLAVE):
     W0 = [CLAVE[0], CLAVE[1], CLAVE[2], CLAVE[3]]
@@ -145,7 +202,7 @@ def xorSk(w,w0):
     return nuevoW    
 
 #Obtiene la subclave apartir de la matriz anterior y la constante Sub i
-def obtenerSubclave(wS,rcon):
+def obtenerSubclave(wS,rcon,BOX):
     w = wS[3]
     fila = [w[0], w[1], w[2], w[3]]
     elemento_rotado = fila.pop()  # Elimina el último elemento
@@ -154,7 +211,7 @@ def obtenerSubclave(wS,rcon):
     #Se pasa por caja S
     Wis = []
     for elemento in fila:
-        valor = sub_byte(elemento)
+        valor = sub_byte(elemento, BOX)
         Wis.append(valor)
 
     #Se realiza xor con Rcon[i]
@@ -170,9 +227,9 @@ def obtenerSubclave(wS,rcon):
     return SKi    
 
 #Genera la subclaves para las 10 mrondas
-def generarSubclaves(SUBCLAVES, sk0):
+def generarSubclaves(SUBCLAVES, sk0,BOX):
     for i in range(10):
-        ski = obtenerSubclave(sk0,R_CON[i])
+        ski = obtenerSubclave(sk0,R_CON[i],BOX)
         sk0 = []
         sk0 = ski
         SUBCLAVES.append(transpose_matrix(ski))
@@ -205,12 +262,12 @@ def AddRoundKey(Matriz, Subclave):
   return resultado
 
 #metodo de subbytes
-def subByteRound(matriz):
+def subByteRound(matriz,BOX):
     resultado = []
     for elemento in matriz:
         fila = []
         for i in elemento:
-            fila.append(sub_byte(i))
+            fila.append(sub_byte(i,BOX))
         resultado.append(fila)  
     return resultado 
 
@@ -219,6 +276,14 @@ def shiftRow(matriz):
     matriz[1] = matriz[1][1:] + matriz[1][:1]
     matriz[2] = matriz[2][2:] + matriz[2][:2]
     matriz[3] = matriz[3][3:] + matriz[3][:3]
+
+    return matriz
+
+#metodo de  shiftRow inverso
+def shiftRowInverse(matriz):
+    matriz[1] = matriz[1][-1] + matriz[1][:-1]
+    matriz[2] = matriz[2][-2:] + matriz[2][:-2]
+    matriz[3] = matriz[3][-3:] + matriz[3][:-3]
 
     return matriz
 
@@ -256,7 +321,7 @@ def imprimir(matriz):
 print("  ")
 print("  ")
 #Metodo que encripta un mensaje
-def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
+def encriptar(mensajeEjemplo, polinomio, SUBCLAVES,BOX):
     #ronda 0
     resultado = []
     print("  ")
@@ -268,7 +333,7 @@ def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
               indice = i + 1
               print("  ")
               print("Ronda",indice)
-              resultado = subByteRound(resultado)
+              resultado = subByteRound(resultado,BOX)
               print("Sub-Byte",indice)
               imprimir(resultado)
               resultado = shiftRow(resultado)
@@ -282,7 +347,7 @@ def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
               resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[i+1])
               imprimir(resultado)
     print("Ronda 10")              
-    resultado = subByteRound(resultado)
+    resultado = subByteRound(resultado,S_BOX)
     print("Sub-Byte 10")
     imprimir(resultado)
     resultado = shiftRow(resultado)
@@ -290,21 +355,56 @@ def encriptar(mensajeEjemplo, polinomio, SUBCLAVES):
     imprimir(resultado)
     print("RoundKey 10")
     resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[10])
-    imprimir(resultado)          
+    imprimir(resultado)      
+
+#Metodo que desencripta un mensaje
+def desencriptar(mensajeEjemplo, polinomio, SUBCLAVES,BOX):
+    resultado = []
+    print("  ")
+    print("Ronda 0")
+    resultado = AddRoundKey(mensajeEjemplo, SUBCLAVES[10])
+    imprimir(resultado)
+    for i in range(8, -1, -1):
+        indice = 0
+        indice += 1
+        print("  ")
+        print("Ronda",indice)
+        resultado = shiftRowInverse(resultado)
+        print("Shift-Row",indice)
+        imprimir(resultado)
+        resultado = subByteRound(resultado,BOX)
+        print("Sub-Byte",indice)
+        imprimir(resultado)
+        print("RoundKey",indice)
+        resultado = AddRoundKey(resultado, SUBCLAVES[i])
+        imprimir(resultado)
+        resultado = mixColumns(MixColumnsMatrix,resultado,polinomio)
+        print("Mix-Columns",indice)
+        imprimir(resultado)
+    resultado = shiftRowInverse(resultado)
+    print("Shift-Row",indice)
+    imprimir(resultado)
+    resultado = subByteRound(resultado,BOX)
+    print("Sub-Byte",indice)
+    imprimir(resultado)
+    print("RoundKey",indice)
+    resultado = AddRoundKey(resultado, SUBCLAVES[i])
+    imprimir(resultado)
+
 
 
 sk0 = obtenerWsIniciales(CLAVE)
 SUBCLAVES = []
 SUBCLAVES.append(transpose_matrix(sk0))
 
-SUBCLAVES = generarSubclaves(SUBCLAVES, sk0)
+SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX)
 mostrarSubClaves(SUBCLAVES)
-encriptar(mensajeEjemplo,0x11B,SUBCLAVES) 
+encriptar(mensajeEjemplo,0x11B,SUBCLAVES,S_BOX) 
 
 print(" ")
 print(" ")
 print("Encripción utilizando nuestro polinomio")
-encriptar(mensajeEjemplo,0x1B3, SUBCLAVES)
+encriptar(mensajeEjemplo,0x1B3, SUBCLAVES,S_BOX)
 
 print(" ")
 print(" ")
@@ -314,13 +414,13 @@ sk0 = obtenerWsIniciales(arregloClaves[0])
 SUBCLAVES = []
 SUBCLAVES.append(transpose_matrix(sk0))
 
-SUBCLAVES = generarSubclaves(SUBCLAVES, sk0)
+SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX)
 mostrarSubClaves(SUBCLAVES)
 for i in range(5):
     print(" ")
     print(" ")
     print("Mensaje ",i+1)
-    encriptar(mensajes[i],0x11B,SUBCLAVES) 
+    encriptar(mensajes[i],0x11B,SUBCLAVES,S_BOX) 
 
 print(" ")
 print(" ")
@@ -330,13 +430,15 @@ for i in range(5):
     SUBCLAVES = []
     SUBCLAVES.append(transpose_matrix(sk0))
 
-    SUBCLAVES = generarSubclaves(SUBCLAVES, sk0)
+    SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX)
     mostrarSubClaves(SUBCLAVES)
-    encriptar(mensajes[2],0x11B,SUBCLAVES) 
+    encriptar(mensajes[2],0x11B,SUBCLAVES,S_BOX) 
 
 
+#Desencriptar
+sk0 = obtenerWsIniciales(CLAVE)
+SUBCLAVES = []
+SUBCLAVES.append(transpose_matrix(sk0))
 
-
-
-  
-
+SUBCLAVES = generarSubclaves(SUBCLAVES, sk0,S_BOX_INVERSE)
+mostrarSubClaves(SUBCLAVES)
